@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Home - SCOM Portal{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-8 offset-md-2 text-center">
+            <h1 class="display-4 mb-4">Welcome to SCOM Portal</h1>
+            <p class="lead mb-4">Manage your customers and subscriptions with ease</p>
+            
+            {% if current_user.is_authenticated %}
+                {% if current_user.role == 'admin' %}
+                    <a href="{{ url_for('admin.dashboard') }}" class="btn btn-primary btn-lg me-3">Admin Dashboard</a>
+                {% else %}
+                    <a href="{{ url_for('seller.dashboard') }}" class="btn btn-primary btn-lg me-3">Seller Dashboard</a>
+                {% endif %}
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-secondary btn-lg">Logout</a>
+            {% else %}
+                <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg me-3">Login</a>
+                <a href="{{ url_for('auth.register') }}" class="btn btn-outline-primary btn-lg">Register</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row mt-5">
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-users fa-3x mb-3 text-primary"></i>
+                    <h3>Customer Management</h3>
+                    <p>Easily manage your customers and their details in one place.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-shopping-cart fa-3x mb-3 text-primary"></i>
+                    <h3>Subscription Plans</h3>
+                    <p>Create and manage subscription plans for your customers.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-chart-line fa-3x mb-3 text-primary"></i>
+                    <h3>Analytics</h3>
+                    <p>Get insights into your business with our powerful analytics.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

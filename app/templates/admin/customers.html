@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}All Customers - Admin{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>All Customers</h2>
+        <div>
+            <a href="#" class="btn btn-outline-secondary me-2" data-bs-toggle="modal" data-bs-target="#importCustomersModal">
+                <i class="fas fa-file-import me-1"></i> Import
+            </a>
+            <a href="#" class="btn btn-outline-primary">
+                <i class="fas fa-file-export me-1"></i> Export
+            </a>
+        </div>
+    </div>
+    
+    <!-- Search and Filter -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form action="#" method="GET" class="row g-3">
+                <div class="col-md-4">
+                    <input type="text" name="search" class="form-control" placeholder="Search by name or email..." 
+                           value="{{ request.args.get('search', '') }}">
+                </div>
+                <div class="col-md-3">
+                    <select name="seller" class="form-select">
+                        <option value="">All Sellers</option>
+                        {% for seller in all_sellers %}
+                            <option value="{{ seller.id }}" {% if request.args.get('seller')|int == seller.id %}selected{% endif %}>
+                                {{ seller.username }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search me-1"></i> Filter
+                    </button>
+                </div>
+                <div class="col-md-2">
+                    <a href="{{ url_for('admin.customers') }}" class="btn btn-outline-secondary w-100">
+                        <i class="fas fa-sync-alt me-1"></i> Reset
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Customers Table -->
+    <div class="card">
+        <div class="card-body">
+            {% if customers %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Seller</th>
+                                <th>Orders</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for customer, seller_username in customers %}
+                            <tr>
+                                <td>{{ customer.id }}</td>
+                                <td>{{ customer.name }}</td>
+                                <td>{{ customer.email }}</td>
+                                <td>{{ customer.phone or 'N/A' }}</td>
+                                <td>{{ seller_username }}</td>
+                                <td>
+                                    <span class="badge bg-primary">{{ customer.orders|length }}</span>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="#" class="btn btn-outline-primary" title="View">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="#" class="btn btn-outline-secondary" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                <nav aria-label="Page navigation" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                            <a class="page-link" href="{{ url_for('admin.customers', page=pagination.prev_num, **request.args) if pagination.has_prev else '#' }}" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                        {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                            {% if page_num %}
+                                <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                                    <a class="page-link" href="{{ url_for('admin.customers', page=page_num, **request.args) }}">
+                                        {{ page_num }}
+                                    </a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                            <a class="page-link" href="{{ url_for('admin.customers', page=pagination.next_num, **request.args) if pagination.has_next else '#' }}" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+                
+            {% else %}
+                <div class="text-center py-5">
+                    <div class="mb-3">
+                        <i class="fas fa-users fa-4x text-muted"></i>
+                    </div>
+                    <h5>No customers found</h5>
+                    <p class="text-muted">There are no customers in the system yet.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Import Customers Modal -->
+<div class="modal fade" id="importCustomersModal" tabindex="-1" aria-labelledby="importCustomersModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="importCustomersModalLabel">Import Customers</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="importFile" class="form-label">Select CSV File</label>
+                    <input class="form-control" type="file" id="importFile" accept=".csv">
+                    <div class="form-text">
+                        Download the <a href="#" class="text-decoration-none">template file</a> for reference.
+                    </div>
+                </div>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    The CSV file should include the following columns: Name, Email, Phone, Address, Seller
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary">Import</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Add any custom JavaScript for this page here
+    document.addEventListener('DOMContentLoaded', function() {
+        // Example: Show loading state on import button click
+        const importBtn = document.querySelector('#importCustomersModal .btn-primary');
+        if (importBtn) {
+            importBtn.addEventListener('click', function() {
+                const originalText = this.innerHTML;
+                this.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Importing...';
+                this.disabled = true;
+                
+                // Simulate API call
+                setTimeout(() => {
+                    this.innerHTML = originalText;
+                    this.disabled = false;
+                    
+                    // Close modal
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('importCustomersModal'));
+                    modal.hide();
+                    
+                    // Show success message
+                    const alert = document.createElement('div');
+                    alert.className = 'alert alert-success alert-dismissible fade show';
+                    alert.role = 'alert';
+                    alert.innerHTML = `
+                        <i class="fas fa-check-circle me-2"></i>
+                        Customers imported successfully!
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    `;
+                    document.querySelector('.container').insertBefore(alert, document.querySelector('.container').firstChild);
+                    
+                    // Auto-hide alert after 5 seconds
+                    setTimeout(() => {
+                        const bsAlert = new bootstrap.Alert(alert);
+                        bsAlert.close();
+                    }, 5000);
+                }, 1500);
+            });
+        }
+    });
+</script>
+{% endblock %}

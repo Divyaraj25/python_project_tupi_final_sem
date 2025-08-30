@@ -1,0 +1,154 @@
+{
+  "projectName": "Seller-Customer-Order Management Portal",
+  "techStack": {
+    "backend": "Python (Flask)",
+    "frontend": "HTML, CSS, Bootstrap, JavaScript",
+    "database": "SQLite",
+    "authentication": "Flask-Login"
+  },
+  "projectSchedule": {
+    "totalWeeks": 4,
+    "phases": [
+      {
+        "name": "Phase 1: Project Setup & Database Design",
+        "tasks": [
+          {
+            "id": "T1",
+            "name": "Initialize Project Repository & Structure",
+            "description": "Create project folder, initialize Git, set up a virtual environment, and create basic directory structure (app/, templates/, static/, etc.).",
+            "estimatedHours": 2,
+            "dependencies": null,
+            "codePrompt": "Create a project folder named 'scom-portal'. Inside it, run 'git init', create a 'requirements.txt' file with Flask, Flask-SQLAlchemy, Flask-Login, and python-dotenv. Create an app/ directory with an empty __init__.py file. Create templates/ and static/ directories. Create a .gitignore file for Python and a .env file for environment variables."
+          },
+          {
+            "id": "T2",
+            "name": "Design Database Models (SQLAlchemy)",
+            "description": "Define the User (Admin/Seller), Customer, SubscriptionPlan, and Order models with appropriate relationships.",
+            "estimatedHours": 4,
+            "dependencies": "T1",
+            "codePrompt": "In app/models.py, define the following models with SQLAlchemy:\n1. User: id (pk), username, email, password_hash, role (admin/seller)\n2. Customer: id (pk), name, email, phone, address, seller_id (fk to User.id)\n3. SubscriptionPlan: id (pk), name, description, price, duration_days\n4. Order: id (pk), customer_id (fk), plan_id (fk), start_date, end_date, status (Active/Expired/Pending), created_by (fk to User.id)\n\nAdd __repr__ methods. Establish relationships: User.customers, User.orders_created, Customer.orders, Customer.seller."
+          },
+          {
+            "id": "T3",
+            "name": "Initialize App & Database",
+            "description": "Create the Flask application factory, load configuration from .env, and initialize extensions (SQLAlchemy, LoginManager).",
+            "estimatedHours": 3,
+            "dependencies": "T2",
+            "codePrompt": "In app/__init__.py, create a create_app() function that:\n- Loads config (SECRET_KEY, SQLALCHEMY_DATABASE_URI) from .env.\n- Initializes Flask-SQLAlchemy and Flask-Login.\n- Registers blueprints (to be created later).\n- Creates database tables within the app context.\n\nCreate a run.py file in the root to run the app. Create a .env file with SECRET_KEY and DATABASE_URL=sqlite:///scom_portal.db."
+          }
+        ]
+      },
+      {
+        "name": "Phase 2: Core Backend & Authentication",
+        "tasks": [
+          {
+            "id": "T4",
+            "name": "Implement User Authentication (Flask-Login)",
+            "description": "Set up user loader, login view, logout view, and registration logic. Hash passwords.",
+            "estimatedHours": 5,
+            "dependencies": "T3",
+            "codePrompt": "In app/auth.py (as a blueprint):\n1. Create routes for /login (GET/POST) and /logout.\n2. Use werkzeug.security to generate and check password hashes.\n3. Use @login_required decorator. Implement load_user function for Flask-Login.\n4. In the login view, check the user's role after authentication.\n5. Create a simple login form with WTForms or plain HTML. Redirect admin to /admin, seller to /seller on login.\n\nAdd UserMixin to your User model."
+          },
+          {
+            "id": "T5",
+            "name": "Create Role-Based Access Control Decorators",
+            "description": "Create custom decorators to restrict routes to 'admin' or 'seller' only.",
+            "estimatedHours": 3,
+            "dependencies": "T4",
+            "codePrompt": "In app/utils/decorators.py, create two decorators:\n1. @admin_required: checks if current_user.is_authenticated and current_user.role == 'admin'\n2. @seller_required: checks if current_user.is_authenticated and current_user.role == 'seller'\nIf not, abort(403) or redirect."
+          },
+          {
+            "id": "T6",
+            "name": "Build Admin Panel Blueprint - Seller Management",
+            "description": "Create routes for admin to view all sellers and add new sellers.",
+            "estimatedHours": 4,
+            "dependencies": "T5",
+            "codePrompt": "Create app/admin.py blueprint. Routes:\n- /admin/dashboard (GET): @admin_required, show stats (count of sellers, customers, orders).\n- /admin/sellers (GET): @admin_required, list all sellers (query User.filter_by(role='seller')).\n- /admin/seller/add (GET/POST): @admin_required, form to create a new seller user.\nUse simple HTML forms for now. Render templates admin_dashboard.html, sellers.html, add_seller.html."
+          },
+          {
+            "id": "T7",
+            "name": "Build Seller Panel Blueprint - Customer CRUD",
+            "description": "Create routes for a seller to Add, View, Update, Delete their customers.",
+            "estimatedHours": 5,
+            "dependencies": "T5",
+            "codePrompt": "Create app/seller.py blueprint. Routes:\n- /seller/dashboard (GET): @seller_required, show seller's stats.\n- /seller/customers (GET): @seller_required, list only customers where customer.seller_id == current_user.id.\n- /seller/customer/add (GET/POST): @seller_required, form to add a new customer. Auto-assign customer.seller_id = current_user.id.\nUse templates seller_dashboard.html, customers.html, add_customer.html."
+          }
+        ]
+      },
+      {
+        "name": "Phase 3: Frontend & Order Management",
+        "tasks": [
+          {
+            "id": "T8",
+            "name": "Integrate Bootstrap for UI Layout",
+            "description": "Create a base template with Bootstrap CSS/JS and navigation bar. Extend this template for all pages.",
+            "estimatedHours": 4,
+            "dependencies": "T6, T7",
+            "codePrompt": "Create templates/base.html. Include Bootstrap CDN links. Create a nav bar that changes based on user role (e.g., Admin sees 'Admin Dashboard', Seller sees 'My Customers'). Add a logout link. Use Jinja2 blocks for content (% block content %).\nModify all existing templates to extend base.html."
+          },
+          {
+            "id": "T9",
+            "name": "Implement Order Creation & Management",
+            "description": "Sellers should be able to create orders linked to their customers and pre-defined subscription plans.",
+            "estimatedHours": 6,
+            "dependencies": "T7, T8",
+            "codePrompt": "In app/seller.py, add routes:\n- /seller/orders (GET): @seller_required, list all orders created by the current seller. Join with Customer and Plan tables to show names.\n- /seller/order/create (GET/POST): @seller_required, form to create an order. The form should have dropdowns for Customer (filtered by current_user.customers) and SubscriptionPlan (from a fixed list). Calculate end_date based on start_date + plan.duration_days. Set status to 'Pending' or 'Active'.\nCreate orders.html and create_order.html templates with forms."
+          },
+          {
+            "id": "T10",
+            "name": "Build Admin's 'View All' Pages",
+            "description": "Admin should be able to view all customers and all orders from all sellers.",
+            "estimatedHours": 4,
+            "dependencies": "T6, T9",
+            "codePrompt": "In app/admin.py, add routes:\n- /admin/customers (GET): @admin_required, list all customers, joined with their Seller's username.\n- /admin/orders (GET): @admin_required, list all orders, joined with Customer, Plan, and Seller info.\nCreate templates admin_customers.html and admin_orders.html with tables."
+          },
+          {
+            "id": "T11",
+            "name": "Add Basic Data Validation & Error Handling",
+            "description": "Add simple checks in forms (e.g., check if email exists) and basic error pages (404, 403).",
+            "estimatedHours": 3,
+            "dependencies": "T9, T10",
+            "codePrompt": "In your POST routes, add checks like:\n- if form.validate(): ... else: flash('Error')\n- Check if a customer email is unique for that seller.\nCreate templates/404.html and templates/403.html. Use @app.errorhandler(404) and @app.errorhandler(403)."
+          }
+        ]
+      },
+      {
+        "name": "Phase 4: Polish, Testing & Documentation",
+        "tasks": [
+          {
+            "id": "T12",
+            "name": "Add Inline Comments & JSDoc-style Function Headers",
+            "description": "Go through all Python and JS files. Add docstrings to functions and inline comments for complex logic.",
+            "estimatedHours": 4,
+            "dependencies": "T11",
+            "codePrompt": "Add comments like this to all Python functions:\n\"\"\"\nFetches all customers belonging to the currently logged-in seller.\n\nReturns:\n    QuerySet: A list of Customer objects.\n\"\"\"\nAdd inline comments for complex database queries or logic. In static JS files, use /** JSDoc comments */ for any functions."
+          },
+          {
+            "id": "T13",
+            "name": "Create Comprehensive README.md",
+            "description": "Document how to set up, run, and use the project. Include credentials for demo accounts.",
+            "estimatedHours": 2,
+            "dependencies": "T12",
+            "codePrompt": "Create a README.md with:\n# Project Title\n## Tech Stack\n## Features\n## Installation & Setup (step-by-step: git clone, virtualenv, pip install, run)\n## Demo Logins\n- Admin: admin@example.com / adminpass\n- Seller: seller1@example.com / sellerpass\n## Project Structure"
+          },
+          {
+            "id": "T14",
+            "name": "Final Testing & Bug Fixing",
+            "description": "Test all user flows: Login as Admin/Seller, create customers, create orders, check views. Fix any bugs.",
+            "estimatedHours": 6,
+            "dependencies": "T13",
+            "codePrompt": "Manually test:\n1. Admin login -> Add Seller -> View Sellers.\n2. Logout -> Login as new Seller -> Add Customer -> Create Order for that customer.\n3. Login as Admin -> View All Customers/Orders -> Verify the new data appears.\n4. Check that a seller cannot see another seller's data.\nCreate a few test cases and run them."
+          },
+          {
+            "id": "T15",
+            "name": "Final Git Commit & Preparation for Submission",
+            "description": "Do a final commit with a meaningful message. Ensure no sensitive data (like real passwords) is in the repo.",
+            "estimatedHours": 1,
+            "dependencies": "T14",
+            "codePrompt": "Run `git add .`, `git commit -m \"Final commit: Project completed with all core features, documentation, and testing\"`. Double-check your .gitignore to ensure `*.db` and `.env` are not tracked. Create a ZIP archive of the project folder for submission."
+          }
+        ]
+      }
+    ]
+  }
+}

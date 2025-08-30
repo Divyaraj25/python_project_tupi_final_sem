@@ -1,0 +1,594 @@
+{% extends "base.html" %}
+
+{% block title %}Create New Order - Seller{% endblock %}
+
+{% block content %}
+<div class="container">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('seller.dashboard') }}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('seller.orders') }}">Orders</a></li>
+            <li class="breadcrumb-item active" aria-current="page">New Order</li>
+        </ol>
+    </nav>
+    
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-plus-circle me-2"></i>Create New Order
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="orderForm" method="POST" action="{{ url_for('seller.create_order') }}">
+                        {{ form.hidden_tag() }}
+                        
+                        <!-- Customer Selection -->
+                        <div class="mb-4">
+                            <h6 class="border-bottom pb-2 mb-3">
+                                <i class="fas fa-user me-2"></i>Customer Information
+                            </h6>
+                            <div class="mb-3">
+                                <label for="customer_id" class="form-label">Select Customer</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-search"></i>
+                                    </span>
+                                    <select class="form-select" id="customer_id" name="customer_id" required>
+                                        <option value="" disabled selected>Select a customer...</option>
+                                        {% for customer in customers %}
+                                            <option value="{{ customer.id }}" 
+                                                {% if form.customer_id.data|int == customer.id %}selected{% endif %}>
+                                                {{ customer.name }} - {{ customer.email or customer.phone or '' }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                    <a href="{{ url_for('seller.add_customer') }}" class="btn btn-outline-secondary" 
+                                       type="button" id="addCustomerBtn">
+                                        <i class="fas fa-plus me-1"></i> New Customer
+                                    </a>
+                                </div>
+                                {% if form.customer_id.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.customer_id.errors[0] }}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text">
+                                    Can't find the customer? 
+                                    <a href="{{ url_for('seller.add_customer') }}" class="text-decoration-none">
+                                        Add a new customer
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            <!-- Customer Details (Dynamically Loaded) -->
+                            <div id="customerDetails" class="card bg-light p-3 mb-3" style="display: none;">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 id="customerName"></h6>
+                                        <p class="mb-1" id="customerEmail"></p>
+                                        <p class="mb-0" id="customerPhone"></p>
+                                    </div>
+                                    <div class="col-md-6 text-md-end">
+                                        <p class="mb-1" id="customerAddress"></p>
+                                        <p class="mb-0" id="customerSince"></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Plan Selection -->
+                        <div class="mb-4">
+                            <h6 class="border-bottom pb-2 mb-3">
+                                <i class="fas fa-box-open me-2"></i>Select Subscription Plan
+                            </h6>
+                            <div class="row g-3" id="planOptions">
+                                {% for plan in plans %}
+                                    {% set plan_loop = loop %}
+                                    {% for subfield in form.plan_id %}
+                                        {% if loop.index0 == plan_loop.index0 %}
+                                    <div class="col-md-6 col-lg-4">
+                                        <div class="card h-100 plan-card">
+                                            <div class="card-body text-center">
+                                                <div class="form-check h-100 d-flex flex-column">
+                                                    <div class="mb-3">
+                                                        <input class="form-check-input" type="radio" 
+                                                               name="{{ subfield.name }}" 
+                                                               id="{{ subfield.id }}" 
+                                                               value="{{ subfield.data }}"
+                                                               {% if subfield.checked %}checked{% endif %}>
+                                                        <label class="form-check-label d-block" for="{{ subfield.id }}">
+                                                            <h5 class="mt-2 mb-1">{{ plan.name }}</h5>
+                                                        </label>
+                                                    </div>
+                                                    
+                                                    <div class="plan-price my-2">
+                                                        <h3 class="text-primary">${{ "%.2f"|format(plan.price) }}</h3>
+                                                        <span class="text-muted">for {{ plan.duration_days }} days</span>
+                                                    </div>
+                                                    
+                                                    <div class="plan-features text-start small my-3">
+                                                        {% if plan.description %}
+                                                            <p class="mb-2">{{ plan.description }}</p>
+                                                        {% endif %}
+                                                        <ul class="list-unstyled">
+                                                            <li class="mb-1">
+                                                                <i class="fas fa-check text-success me-2"></i>
+                                                                {{ plan.duration_days }}-day access
+                                                            </li>
+                                                            <li class="mb-1">
+                                                                <i class="fas fa-check text-success me-2"></i>
+                                                                Auto-renewal available
+                                                            </li>
+                                                            <li class="mb-1">
+                                                                <i class="fas fa-check text-success me-2"></i>
+                                                                24/7 Support
+                                                            </li>
+                                                        </ul>
+                                                    </div>
+                                                    
+                                                    <div class="mt-auto">
+                                                        <button type="button" class="btn btn-outline-primary btn-sm w-100"
+                                                                data-bs-toggle="modal" 
+                                                                data-bs-target="#planDetailsModal{{ plan.id }}">
+                                                            View Details
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Plan Details Modal -->
+                                    <div class="modal fade" id="planDetailsModal{{ plan.id }}" tabindex="-1" 
+                                         aria-labelledby="planDetailsModalLabel{{ plan.id }}" aria-hidden="true">
+                                        <div class="modal-dialog modal-dialog-centered">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title" id="planDetailsModalLabel{{ plan.id }}">
+                                                        {{ plan.name }} - Details
+                                                    </h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" 
+                                                            aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <div class="text-center mb-4">
+                                                        <h3 class="text-primary">${{ "%.2f"|format(plan.price) }}</h3>
+                                                        <p class="text-muted">for {{ plan.duration_days }} days of access</p>
+                                                    </div>
+                                                    
+                                                    {% if plan.description %}
+                                                        <p>{{ plan.description }}</p>
+                                                    {% endif %}
+                                                    
+                                                    <h6>What's Included:</h6>
+                                                    <ul class="list-unstyled">
+                                                        <li class="mb-2">
+                                                            <i class="fas fa-check text-success me-2"></i>
+                                                            Full access for {{ plan.duration_days }} days
+                                                        </li>
+                                                        <li class="mb-2">
+                                                            <i class="fas fa-check text-success me-2"></i>
+                                                            Priority customer support
+                                                        </li>
+                                                        <li class="mb-2">
+                                                            <i class="fas fa-check text-success me-2"></i>
+                                                            Email notifications
+                                                        </li>
+                                                        <li class="mb-2">
+                                                            <i class="fas fa-check text-success me-2"></i>
+                                                            Access to all features
+                                                        </li>
+                                                    </ul>
+                                                    
+                                                    <div class="alert alert-info mt-3">
+                                                        <i class="fas fa-info-circle me-2"></i>
+                                                        This plan will automatically expire after 
+                                                        {{ plan.duration_days }} days from the start date.
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" 
+                                                            data-bs-dismiss="modal">Close</button>
+                                                    <button type="button" class="btn btn-primary" 
+                                                            onclick="document.getElementById('{{ subfield.id }}').click();"
+                                                            data-bs-dismiss="modal">
+                                                        <i class="fas fa-check me-1"></i> Select This Plan
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                                
+                                {% if form.plan_id.errors %}
+                                    <div class="col-12">
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.plan_id.errors[0] }}
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Order Details -->
+                        <div class="mb-4">
+                            <h6 class="border-bottom pb-2 mb-3">
+                                <i class="fas fa-calendar-alt me-2"></i>Order Details
+                            </h6>
+                            
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        {{ form.start_date.label(class="form-label") }}
+                                        <div class="input-group">
+                                            <span class="input-group-text">
+                                                <i class="far fa-calendar-alt"></i>
+                                            </span>
+                                            {{ form.start_date(class="form-control", id="start_date", placeholder="Select start date") }}
+                                        </div>
+                                        {% if form.start_date.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {{ form.start_date.errors[0] }}
+                                            </div>
+                                        {% else %}
+                                            <div class="form-text">
+                                                The date when the subscription will become active
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        {{ form.payment_status.label(class="form-label") }}
+                                        {{ form.payment_status(class="form-select") }}
+                                        {% if form.payment_status.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {{ form.payment_status.errors[0] }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <div class="col-12">
+                                    <div class="form-group">
+                                        {{ form.notes.label(class="form-label") }}
+                                        {{ form.notes(class="form-control", rows="3", 
+                                            placeholder="Any special instructions or notes about this order...") }}
+                                        {% if form.notes.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {{ form.notes.errors[0] }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Order Summary -->
+                        <div class="card bg-light mb-4">
+                            <div class="card-body">
+                                <h6 class="mb-3">
+                                    <i class="fas fa-receipt me-2"></i>Order Summary
+                                </h6>
+                                
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-borderless">
+                                        <tbody>
+                                            <tr>
+                                                <th scope="row">Plan</th>
+                                                <td id="selectedPlanName" class="text-end">-</td>
+                                            </tr>
+                                            <tr>
+                                                <th scope="row">Duration</th>
+                                                <td id="selectedPlanDuration" class="text-end">-</td>
+                                            </tr>
+                                            <tr class="border-top">
+                                                <th scope="row">Subtotal</th>
+                                                <td id="subtotal" class="text-end">$0.00</td>
+                                            </tr>
+                                            <tr>
+                                                <th scope="row">Tax (0%)</th>
+                                                <td id="tax" class="text-end">$0.00</td>
+                                            </tr>
+                                            <tr class="border-top fw-bold">
+                                                <th scope="row">Total</th>
+                                                <td id="total" class="text-end">$0.00</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('seller.orders') }}" class="btn btn-outline-secondary me-md-2">
+                                <i class="fas fa-times me-1"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-check-circle me-1"></i> Create Order
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Flatpickr for date input -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize date picker
+    flatpickr("#start_date", {
+        dateFormat: "Y-m-d",
+        minDate: "today",
+        defaultDate: "today"
+    });
+    
+    // Customer selection change handler
+    const customerSelect = document.getElementById('customer_id');
+    const customerDetails = document.getElementById('customerDetails');
+    
+    // Customer data from template
+    const customers = {
+        {% for customer in customers %}
+            {{ customer.id }}: {
+                name: '{{ customer.name|e }}',
+                email: '{{ customer.email|default("N/A")|e }}',
+                phone: '{{ customer.phone|default("N/A")|e }}',
+                address: '{{ customer.address|default("No address provided")|e }}',
+                since: 'Customer since {{ customer.created_at.strftime("%b %d, %Y") if customer.created_at else "N/A" }}'
+            }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    };
+
+    customerSelect.addEventListener('change', function() {
+        const customerId = this.value;
+        const customer = customers[customerId];
+        
+        if (customer) {
+            document.getElementById('customerName').textContent = customer.name;
+            document.getElementById('customerEmail').innerHTML = 
+                `<i class="fas fa-envelope me-2"></i>${customer.email}`;
+            document.getElementById('customerPhone').innerHTML = 
+                `<i class="fas fa-phone me-2"></i>${customer.phone}`;
+            document.getElementById('customerAddress').innerHTML = 
+                `<i class="fas fa-map-marker-alt me-2"></i>${customer.address}`;
+            document.getElementById('customerSince').innerHTML = 
+                `<small class="text-muted">${customer.since}</small>`;
+            
+            customerDetails.style.display = 'block';
+        } else {
+            customerDetails.style.display = 'none';
+        }
+    });
+    
+    // Trigger change event if a customer is already selected
+    if (customerSelect.value) {
+        customerSelect.dispatchEvent(new Event('change'));
+    }
+    
+    // Plan selection change handler
+    const planRadios = document.querySelectorAll('input[name="plan_id"]');
+    const planData = {
+        {% for plan in plans %}
+            {{ plan.id }}: {
+                name: '{{ plan.name }}',
+                price: {{ plan.price }},
+                duration: '{{ plan.duration_days }} days',
+                description: '{{ plan.description or "" }}'
+            }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    };
+    
+    function updateOrderSummary(planId) {
+        const plan = planData[planId];
+        
+        if (plan) {
+            document.getElementById('selectedPlanName').textContent = plan.name;
+            document.getElementById('selectedPlanDuration').textContent = plan.duration;
+            
+            const subtotal = plan.price;
+            const tax = 0; // Assuming no tax for now
+            const total = subtotal + tax;
+            
+            document.getElementById('subtotal').textContent = `$${subtotal.toFixed(2)}`;
+            document.getElementById('tax').textContent = `$${tax.toFixed(2)}`;
+            document.getElementById('total').textContent = `$${total.toFixed(2)}`;
+        } else {
+            document.getElementById('selectedPlanName').textContent = '-';
+            document.getElementById('selectedPlanDuration').textContent = '-';
+            document.getElementById('subtotal').textContent = '$0.00';
+            document.getElementById('tax').textContent = '$0.00';
+            document.getElementById('total').textContent = '$0.00';
+        }
+    }
+    
+    planRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.checked) {
+                updateOrderSummary(this.value);
+            }
+        });
+    });
+    
+    // Initialize order summary if a plan is already selected
+    const selectedPlan = document.querySelector('input[name="plan_id"]:checked');
+    if (selectedPlan) {
+        updateOrderSummary(selectedPlan.value);
+    } else if (planRadios.length > 0) {
+        // Select first plan by default if none selected
+        planRadios[0].checked = true;
+        planRadios[0].dispatchEvent(new Event('change'));
+    }
+    
+    // Form validation
+    const orderForm = document.getElementById('orderForm');
+    if (orderForm) {
+        orderForm.addEventListener('submit', function(event) {
+            let isValid = true;
+            
+            // Validate customer selection
+            if (!customerSelect.value) {
+                isValid = false;
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'invalid-feedback d-block';
+                errorDiv.textContent = 'Please select a customer';
+                
+                const existingError = customerSelect.parentNode.querySelector('.invalid-feedback');
+                if (!existingError) {
+                    customerSelect.parentNode.appendChild(errorDiv);
+                    customerSelect.classList.add('is-invalid');
+                }
+            } else {
+                const errorDiv = customerSelect.parentNode.querySelector('.invalid-feedback');
+                if (errorDiv) {
+                    customerSelect.parentNode.removeChild(errorDiv);
+                    customerSelect.classList.remove('is-invalid');
+                }
+            }
+            
+            // Validate plan selection
+            const planSelected = document.querySelector('input[name="plan_id"]:checked');
+            if (!planSelected) {
+                isValid = false;
+                const planOptions = document.getElementById('planOptions');
+                let errorDiv = planOptions.querySelector('.plan-error');
+                
+                if (!errorDiv) {
+                    errorDiv = document.createElement('div');
+                    errorDiv.className = 'col-12 plan-error';
+                    errorDiv.innerHTML = `
+                        <div class="alert alert-danger mb-0">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            Please select a subscription plan
+                        </div>
+                    `;
+                    planOptions.prepend(errorDiv);
+                }
+            } else {
+                const errorDiv = document.querySelector('.plan-error');
+                if (errorDiv) {
+                    errorDiv.remove();
+                }
+            }
+            
+            if (!isValid) {
+                event.preventDefault();
+                event.stopPropagation();
+                
+                // Scroll to the first error
+                const firstError = document.querySelector('.is-invalid, .alert-danger');
+                if (firstError) {
+                    firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+            
+            // If form is valid, you could show a loading state
+            if (isValid) {
+                const submitBtn = orderForm.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Processing...';
+                }
+            }
+        });
+    }
+    
+    // Add animation to plan cards on selection
+    document.querySelectorAll('.plan-card').forEach(card => {
+        const radio = card.querySelector('input[type="radio"]');
+        
+        card.addEventListener('click', function(e) {
+            // Don't trigger if clicking on the radio or its label directly
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'LABEL') {
+                radio.checked = true;
+                radio.dispatchEvent(new Event('change'));
+            }
+        });
+        
+        radio.addEventListener('change', function() {
+            document.querySelectorAll('.plan-card').forEach(c => {
+                if (c !== card && c.classList.contains('border-primary')) {
+                    c.classList.remove('border-primary');
+                    c.classList.add('border-light');
+                }
+            });
+            
+            if (this.checked) {
+                card.classList.remove('border-light');
+                card.classList.add('border-primary');
+            } else {
+                card.classList.remove('border-primary');
+                card.classList.add('border-light');
+            }
+        });
+        
+        // Initialize border for selected plan
+        if (radio.checked) {
+            card.classList.remove('border-light');
+            card.classList.add('border-primary');
+        }
+    });
+});
+</script>
+
+<style>
+.plan-card {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid #e9ecef;
+    border-radius: 0.5rem;
+}
+
+.plan-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+}
+
+.plan-card .card-body {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.plan-price {
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.plan-features {
+    flex-grow: 1;
+}
+
+.form-check-input:checked {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+/* Add some spacing between form sections */
+.mb-4 {
+    margin-bottom: 1.5rem !important;
+}
+
+/* Make sure the form is not too wide on large screens */
+@media (min-width: 1200px) {
+    .col-lg-8 {
+        max-width: 900px;
+    }
+}
+
+/* Style for the customer details card */
+#customerDetails {
+    transition: all 0.3s ease;
+}
+</style>
+{% endblock %}
